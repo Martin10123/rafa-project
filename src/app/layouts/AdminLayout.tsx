@@ -23,6 +23,13 @@ export function AdminLayout() {
             >
               Inventario
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              render={<Link to="/admin/galeria" />}
+            >
+              Galería
+            </Button>
             <Button variant="ghost" size="sm" render={<Link to="/" />}>
               Tienda
             </Button>

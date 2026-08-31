@@ -15,6 +15,9 @@ export function StoreLayout() {
           <Link to="/" className="text-sm font-medium text-foreground">
             Rafa
           </Link>
+          <Button variant="ghost" size="sm" render={<Link to="/galeria" />}>
+            Galería
+          </Button>
           <span className="text-xs text-muted-foreground">Manillas</span>
           <nav className="ml-auto flex items-center gap-2">
             {status === 'loading' ? (

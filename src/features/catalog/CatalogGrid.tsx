@@ -21,7 +21,7 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <Link to={`/producto/${product.beadSize}`} className="block h-full">
       <Card size="sm" className="h-full overflow-hidden transition-colors hover:bg-muted/40">
-        <div className="aspect-[4/3] bg-muted">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 via-amber-50 to-slate-200">
           {product.coverImageUrl ? (
             <img
               src={product.coverImageUrl}
@@ -29,8 +29,11 @@ function ProductCard({ product }: { product: Product }) {
               className="size-full object-cover"
             />
           ) : (
-            <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
-              #{product.beadSize}
+            <div className="flex size-full flex-col items-center justify-center gap-1">
+              <span className="text-base font-medium text-foreground">
+                #{product.beadSize}
+              </span>
+              <span className="text-xs text-muted-foreground">Vista 3D en ficha</span>
             </div>
           )}
         </div>

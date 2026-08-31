@@ -18,10 +18,18 @@ import {
   type ProductPresentation,
 } from '@/domain/product/types'
 import { useProduct } from '@/features/catalog/useProducts'
+import { BeadViewerSuspense } from '@/features/scene3d/BeadViewerLazy'
+import type { ThreadColor } from '@/features/scene3d/BeadSceneContent'
 
 type ProductDetailProps = {
   beadSizeParam: string
 }
+
+const THREAD_OPTIONS: { id: ThreadColor; label: string }[] = [
+  { id: 'negro', label: 'Negro' },
+  { id: 'rojo', label: 'Rojo' },
+  { id: 'gris', label: 'Gris' },
+]
 
 function PresentationCard({
   item,
@@ -65,13 +73,14 @@ function DetailContent({ product }: { product: Product }) {
         ]
 
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [threadColor, setThreadColor] = useState<ThreadColor>('negro')
   const selected = presentations[selectedIndex] ?? presentations[0]
   const heroImage = selected?.imageUrl ?? product.coverImageUrl
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="aspect-[4/5] bg-muted sm:aspect-square">
+        <div className="aspect-[4/5] sm:aspect-square">
           {heroImage ? (
             <img
               src={heroImage}
@@ -79,9 +88,12 @@ function DetailContent({ product }: { product: Product }) {
               className="size-full object-cover"
             />
           ) : (
-            <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-              Foto pendiente
-            </div>
+            <BeadViewerSuspense
+              beadSize={product.beadSize}
+              threadColor={threadColor}
+              interactive
+              autoRotate
+            />
           )}
         </div>
       </div>
@@ -114,6 +126,27 @@ function DetailContent({ product }: { product: Product }) {
           </p>
         ) : null}
 
+        {!heroImage ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase">
+              Color de hilo
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {THREAD_OPTIONS.map((option) => (
+                <Button
+                  key={option.id}
+                  type="button"
+                  size="sm"
+                  variant={threadColor === option.id ? 'default' : 'outline'}
+                  onClick={() => setThreadColor(option.id)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium text-muted-foreground uppercase">
             Presentaciones
@@ -139,9 +172,9 @@ function DetailContent({ product }: { product: Product }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-        <p className="text-xs text-muted-foreground text-pretty">
-              El precio principal es el balín suelto. Las manillas armadas son
-              presentaciones del catálogo R18k. Las fotos se agregan después.
+            <p className="text-xs text-muted-foreground text-pretty">
+              Vista 3D interactiva mientras llegan las fotos reales. Arrastra
+              para girar; el personalizador completo viene después.
             </p>
           </CardContent>
         </Card>

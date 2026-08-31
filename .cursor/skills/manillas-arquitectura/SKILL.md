@@ -38,8 +38,26 @@ UI: componentes en `src/components/ui` (shadcn Nova). Tipografía de títulos: `
 ## No adelantar fases
 
 Implementar solo la fase pedida.
-- Hecho: fase 0, fase 1 (catálogo), fase 2 (kardex / inventario).
-- Pendiente: carrito, comprobantes, plan separe, R3F.
+- Hecho: fase 0, fase 1 (catálogo), fase 2 (kardex / inventario), fase 2.5
+  (galería / collages).
+- Pendiente: fotos catálogo admin, carrito, comprobantes, plan separe,
+  personalizador 3D.
+
+### Fase 2.5 — Galería de trabajos (collages)
+
+Módulo aparte del catálogo de venta (#3–#8). Inspiración y demostraciones;
+no maneja precio ni stock.
+
+- **Público:** `/galeria` — grid de collages publicados, vista detalle al tocar.
+- **Admin:** `/admin/galeria` — Rafa crea/edita/ordena/publica collages.
+- **Storage:** bucket Supabase `showcases` (imágenes propias; sin Canva).
+- **Datos:** tabla `showcases` (título, nota opcional, plantilla, orden,
+  `is_published`) + `showcase_images` (url, orden, alt) o JSONB de slots.
+- **Plantillas MVP:** 1 foto, 2 columnas, 3 en fila, cuadrícula 2×2 (Rafa elige
+  plantilla, sube fotos, reordena). Sin editor drag-and-drop tipo Canva en v1.
+- **Carpetas:** `domain/showcase`, `data/repositories/showcases`,
+  `features/gallery`, `features/admin/GalleryPanel`.
+- Opcional en collage: enlace a `/producto/:beadSize` si aplica; no obligatorio.
 
 ## Marcar admin (Rafa)
 

@@ -2,9 +2,12 @@ import { createBrowserRouter } from 'react-router'
 import { AdminLayout } from '@/app/layouts/AdminLayout'
 import { StoreLayout } from '@/app/layouts/StoreLayout'
 import { RequireAdmin } from '@/features/auth/guards'
+import { AdminGalleryPage } from '@/pages/AdminGalleryPage'
 import { AdminHomePage } from '@/pages/AdminHomePage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
+import { GalleryDetailPage } from '@/pages/GalleryDetailPage'
+import { GalleryPage } from '@/pages/GalleryPage'
 import { HomePage } from '@/pages/HomePage'
 import { ProductPage } from '@/pages/ProductPage'
 
@@ -14,6 +17,8 @@ export const router = createBrowserRouter([
     Component: StoreLayout,
     children: [
       { index: true, Component: HomePage },
+      { path: 'galeria', Component: GalleryPage },
+      { path: 'galeria/:showcaseId', Component: GalleryDetailPage },
       { path: 'producto/:beadSize', Component: ProductPage },
       { path: '403', Component: ForbiddenPage },
     ],
@@ -27,6 +32,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: AdminHomePage },
           { path: 'inventario', Component: AdminInventoryPage },
+          { path: 'galeria', Component: AdminGalleryPage },
         ],
       },
     ],

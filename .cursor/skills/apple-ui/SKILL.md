@@ -55,6 +55,7 @@ NEVER block paste in inputs.
 
 ## Animation
 
-Prefer the built-in shadcn/dialog motion only.
-NEVER add extra animation unless the user asks.
 SHOULD respect `prefers-reduced-motion`.
+Product 3D (R3F) is allowed for catalog/detail/customizer: rotate with
+`transform` only, lazy-load canvases, prefer `dpr={[1,1.5]}`.
+NEVER add unrelated UI animation noise.

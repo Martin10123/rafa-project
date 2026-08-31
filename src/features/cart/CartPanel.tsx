@@ -1,4 +1,4 @@
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   formatPresentationPrice,
@@ -92,6 +92,7 @@ function CartLineRow({
 }
 
 export function CartPanel({ onClose }: { onClose?: () => void } = {}) {
+  const navigate = useNavigate()
   const lines = useCartLines()
   const subtotalLabel = useCartSubtotalLabel()
   const { setQuantity, removeLine, clearCart } = useCartActions()
@@ -147,11 +148,17 @@ export function CartPanel({ onClose }: { onClose?: () => void } = {}) {
           </p>
         </div>
         <p className="text-xs text-muted-foreground text-pretty">
-          El pago con comprobante y plan separe llegan en la siguiente fase.
-          Por ahora puedes armar el pedido y revisar el total.
+          Transfiere el total y sube el comprobante en el siguiente paso.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" disabled>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              onClose?.()
+              navigate('/checkout')
+            }}
+          >
             Ir a pagar
           </Button>
           <Button

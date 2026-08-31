@@ -5,6 +5,7 @@ import { RequireAdmin } from '@/features/auth/guards'
 import { AdminGalleryPage } from '@/pages/AdminGalleryPage'
 import { AdminHomePage } from '@/pages/AdminHomePage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage'
+import { CartPage } from '@/pages/CartPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { GalleryDetailPage } from '@/pages/GalleryDetailPage'
 import { GalleryPage } from '@/pages/GalleryPage'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: 'galeria', Component: GalleryPage },
       { path: 'galeria/:showcaseId', Component: GalleryDetailPage },
+      { path: 'carrito', Component: CartPage },
       { path: 'producto/:beadSize', Component: ProductPage },
       { path: '403', Component: ForbiddenPage },
     ],

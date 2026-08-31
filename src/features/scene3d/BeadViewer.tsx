@@ -40,7 +40,7 @@ export function BeadViewer({
   const shouldRotate = autoRotate && !reducedMotion
 
   const camera = useMemo(
-    () => ({ position: [0, 0.35, 2.6] as [number, number, number], fov: 35 }),
+    () => ({ position: [0, 0.25, 3.4] as [number, number, number], fov: 32 }),
     [],
   )
 
@@ -67,7 +67,9 @@ export function BeadViewer({
           {interactive && !reducedMotion ? (
             <OrbitControls
               enablePan={false}
-              enableZoom={false}
+              enableZoom
+              minDistance={2}
+              maxDistance={5.5}
               minPolarAngle={Math.PI / 3}
               maxPolarAngle={Math.PI / 1.7}
             />
@@ -75,7 +77,9 @@ export function BeadViewer({
         </Canvas>
       </Suspense>
       <p className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground">
-        {interactive && !reducedMotion ? 'Arrastra para girar' : 'Vista 3D'}
+        {interactive && !reducedMotion
+          ? 'Arrastra · rueda para zoom'
+          : 'Vista 3D'}
       </p>
     </div>
   )

@@ -20,7 +20,7 @@ type BeadStrandProps = {
 }
 
 function beadRadius(beadSize: BeadSize): number {
-  return 0.09 + (beadSize - 3) * 0.028
+  return 0.065 + (beadSize - 3) * 0.02
 }
 
 function BeadStrand({
@@ -35,7 +35,7 @@ function BeadStrand({
   const { positions, tube } = useMemo(() => {
     const items: Vector3[] = []
     const arc = Math.PI * 0.95
-    const curveRadius = 0.85
+    const curveRadius = 0.62
     for (let i = 0; i < count; i += 1) {
       const t = i / (count - 1)
       const angle = -arc / 2 + t * arc
@@ -50,7 +50,7 @@ function BeadStrand({
     const curve = new CatmullRomCurve3(items)
     return {
       positions: items.map((v) => [v.x, v.y, v.z] as [number, number, number]),
-      tube: new TubeGeometry(curve, 64, 0.016, 8, false),
+      tube: new TubeGeometry(curve, 64, 0.012, 8, false),
     }
   }, [count])
 
@@ -61,7 +61,7 @@ function BeadStrand({
   })
 
   return (
-    <group ref={group} position={[0, 0.05, 0]}>
+    <group ref={group} position={[0, 0.02, 0]} scale={0.88}>
       <mesh geometry={tube}>
         <meshStandardMaterial
           color={THREAD[threadColor]}

@@ -8,16 +8,25 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   formatPresentationPrice,
-  formatPriceLabel,
   formatStockLabel,
   isBeadSize,
   type BeadSize,
   type Product,
   type ProductPresentation,
 } from '@/domain/product/types'
+import {
+  addBlockedReason,
+  canAddPresentation,
+  findDefaultPresentationIndex,
+  isLooseBeadUnit,
+} from '@/domain/cart/types'
 import { useProduct } from '@/features/catalog/useProducts'
+import { useCartActions } from '@/features/cart/useCart'
+import { useCartUiStore } from '@/features/cart/cart-ui-store'
 import { BeadViewerSuspense } from '@/features/scene3d/BeadViewerLazy'
 import type { ThreadColor } from '@/features/scene3d/BeadSceneContent'
 
@@ -59,6 +68,8 @@ function PresentationCard({
 }
 
 function DetailContent({ product }: { product: Product }) {
+  const { addLine } = useCartActions()
+  const openDrawer = useCartUiStore((state) => state.openDrawer)
   const soldOut = product.stockQty <= 0
   const presentations =
     product.presentations.length > 0
@@ -72,10 +83,46 @@ function DetailContent({ product }: { product: Product }) {
           } satisfies ProductPresentation,
         ]
 
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [selectedIndex, setSelectedIndex] = useState(() =>
+    findDefaultPresentationIndex(presentations, product.stockQty),
+  )
   const [threadColor, setThreadColor] = useState<ThreadColor>('negro')
+  const [quantity, setQuantity] = useState('1')
+  const [cartMessage, setCartMessage] = useState<string | undefined>()
   const selected = presentations[selectedIndex] ?? presentations[0]
   const heroImage = selected?.imageUrl ?? product.coverImageUrl
+  const selectedPrice = selected?.priceCents ?? product.priceCents
+  const selectedUnit =
+    selected?.unit ?? (product.priceCents === null ? null : 'c/u')
+  const looseBeads = isLooseBeadUnit(selectedUnit)
+  const canAdd = canAddPresentation(selectedPrice, selectedUnit, product.stockQty)
+  const blockedReason = addBlockedReason(
+    selectedPrice,
+    selectedUnit,
+    product.stockQty,
+  )
+
+  function onAddToCart() {
+    setCartMessage(undefined)
+    const qty = looseBeads ? Number(quantity) : 1
+    const error = addLine({
+      productId: product.id,
+      beadSize: product.beadSize,
+      productName: product.name,
+      presentationLabel: selected?.label ?? 'Presentación',
+      priceCents: selectedPrice,
+      unit: selectedUnit,
+      stockQty: product.stockQty,
+      quantity: qty,
+      threadColor: heroImage ? null : threadColor,
+    })
+    if (error) {
+      setCartMessage(error)
+      return
+    }
+    setCartMessage('Agregado al carrito.')
+    openDrawer()
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -165,21 +212,64 @@ function DetailContent({ product }: { product: Product }) {
 
         <Card size="sm">
           <CardHeader>
-            <CardDescription className="text-xs">Precio base catálogo</CardDescription>
+            <CardDescription className="text-xs">Agregar al pedido</CardDescription>
             <CardTitle className="text-sm tabular-nums">
-              {formatPriceLabel(product.priceCents)}
-              {product.priceCents !== null ? ' c/u' : ''}
+              {formatPresentationPrice(selectedPrice, selectedUnit)}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground text-pretty">
-              Vista 3D interactiva mientras llegan las fotos reales. Arrastra
-              para girar; el personalizador completo viene después.
-            </p>
+          <CardContent className="flex flex-col gap-3">
+            {looseBeads ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cart-qty" className="text-xs">
+                  Cantidad de balines
+                </Label>
+                <Input
+                  id="cart-qty"
+                  inputMode="numeric"
+                  className="max-w-28 tabular-nums"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={!canAdd}
+                onClick={onAddToCart}
+              >
+                Agregar al carrito
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openDrawer}
+              >
+                Ver carrito
+              </Button>
+              {blockedReason && !canAdd ? (
+                <span className="text-xs text-muted-foreground text-pretty">
+                  {blockedReason}
+                </span>
+              ) : null}
+              {cartMessage ? (
+                <span
+                  className={`text-xs ${
+                    cartMessage === 'Agregado al carrito.'
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                  }`}
+                >
+                  {cartMessage}
+                </span>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" render={<Link to="/" />}>
             Volver al catálogo
           </Button>

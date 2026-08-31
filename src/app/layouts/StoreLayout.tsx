@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, Outlet } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { CartDrawer } from '@/features/cart/CartDrawer'
+import { CartNavButton } from '@/features/cart/CartNavButton'
 import { AuthModal, type AuthModalView } from '@/features/auth/AuthModal'
 import { useAuth } from '@/features/auth/useAuth'
 
@@ -20,6 +22,7 @@ export function StoreLayout() {
           </Button>
           <span className="text-xs text-muted-foreground">Manillas</span>
           <nav className="ml-auto flex items-center gap-2">
+            <CartNavButton />
             {status === 'loading' ? (
               <div className="h-7 w-16 animate-pulse rounded-lg bg-muted" />
             ) : user ? (
@@ -62,6 +65,7 @@ export function StoreLayout() {
         onViewChange={setAuthView}
         onClose={() => setAuthView(null)}
       />
+      <CartDrawer />
     </div>
   )
 }

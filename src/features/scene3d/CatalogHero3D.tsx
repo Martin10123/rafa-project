@@ -16,7 +16,7 @@ export function CatalogHero3D() {
           Vista previa
         </p>
         <p className="text-sm text-foreground">
-          Balines en oro 18k — gira el modelo
+          Balines en oro 18k — gira y haz zoom
         </p>
       </div>
     </div>

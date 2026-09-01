@@ -6,7 +6,7 @@ export function GalleryDetailPage() {
   const id = showcaseId ?? ''
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
+    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
       <ShowcaseDetailView showcaseId={id} />
     </section>
   )

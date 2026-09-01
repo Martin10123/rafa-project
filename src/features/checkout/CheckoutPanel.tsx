@@ -7,6 +7,7 @@ import { formatCop, formatPresentationPrice } from '@/domain/product/types'
 import { lineTotalCents, threadColorLabel } from '@/domain/cart/types'
 import type { CartLine } from '@/domain/cart/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
+import { logEventSafe } from '@/shared/logging'
 import { useCartActions, useCartLines, useCartSubtotalLabel } from '@/features/cart/useCart'
 import { useCreateOrder, useSubmitPaymentProof } from '@/features/orders/useOrders'
 
@@ -57,10 +58,28 @@ export function CheckoutPanel() {
         customerEmail: email || undefined,
         items: cartToOrderItems(lines),
       })
+      logEventSafe({
+        category: 'checkout',
+        eventType: 'checkout_order_created',
+        success: true,
+        message: 'Pedido creado',
+        email: email || undefined,
+        entityType: 'order',
+        entityId: id,
+        detail: { phone, itemCount: lines.length },
+      })
       setOrderId(id)
       setStep('proof')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo crear el pedido.')
+      const msg = error instanceof Error ? error.message : 'No se pudo crear el pedido.'
+      logEventSafe({
+        category: 'checkout',
+        eventType: 'checkout_order_error',
+        success: false,
+        message: msg,
+        email: email || undefined,
+      })
+      setMessage(msg)
     }
   }
 
@@ -70,10 +89,28 @@ export function CheckoutPanel() {
 
     try {
       await submitProof.mutateAsync({ orderId, file })
+      logEventSafe({
+        category: 'checkout',
+        eventType: 'checkout_proof_submitted',
+        success: true,
+        message: 'Comprobante enviado',
+        entityType: 'order',
+        entityId: orderId,
+      })
       clearCart()
       setStep('done')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo subir el comprobante.')
+      const msg =
+        error instanceof Error ? error.message : 'No se pudo subir el comprobante.'
+      logEventSafe({
+        category: 'checkout',
+        eventType: 'checkout_proof_error',
+        success: false,
+        message: msg,
+        entityType: 'order',
+        entityId: orderId,
+      })
+      setMessage(msg)
     }
   }
 

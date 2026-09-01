@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { logEventSafe } from '@/shared/logging'
 import {
   cartLineKey,
   isLooseBeadUnit,
@@ -23,7 +24,19 @@ export const useCartStore = create<CartState>()(
 
       addLine(input) {
         const validation = validateAddToCart(input)
-        if (!validation.ok) return validation.message
+        if (!validation.ok) {
+          logEventSafe({
+            category: 'cart',
+            eventType: 'cart_add_rejected',
+            success: false,
+            message: validation.message,
+            detail: {
+              productId: input.productId,
+              presentationLabel: input.presentationLabel,
+            },
+          })
+          return validation.message
+        }
 
         const quantity = input.quantity ?? 1
         const threadColor = input.threadColor ?? null
@@ -38,7 +51,15 @@ export const useCartStore = create<CartState>()(
         if (existing && isLooseBeadUnit(input.unit)) {
           const nextQty = existing.quantity + quantity
           if (nextQty > input.stockQty) {
-            return `Solo hay ${input.stockQty} balines disponibles.`
+            const message = `Solo hay ${input.stockQty} balines disponibles.`
+            logEventSafe({
+              category: 'cart',
+              eventType: 'cart_add_rejected',
+              success: false,
+              message,
+              detail: { productId: input.productId, requested: nextQty },
+            })
+            return message
           }
 
           set({
@@ -50,7 +71,15 @@ export const useCartStore = create<CartState>()(
         }
 
         if (existing) {
-          return 'Esta presentación ya está en el carrito.'
+          const message = 'Esta presentación ya está en el carrito.'
+          logEventSafe({
+            category: 'cart',
+            level: 'warn',
+            eventType: 'cart_add_rejected',
+            success: false,
+            message,
+          })
+          return message
         }
 
         const line: CartLine = {
@@ -66,6 +95,19 @@ export const useCartStore = create<CartState>()(
         }
 
         set({ lines: [...get().lines, line] })
+        logEventSafe({
+          category: 'cart',
+          eventType: 'cart_add_success',
+          success: true,
+          message: 'Producto agregado al carrito',
+          entityType: 'product',
+          entityId: input.productId,
+          detail: {
+            beadSize: input.beadSize,
+            presentationLabel: input.presentationLabel,
+            quantity,
+          },
+        })
         return null
       },
 
@@ -90,6 +132,12 @@ export const useCartStore = create<CartState>()(
 
       clearCart() {
         set({ lines: [] })
+        logEventSafe({
+          category: 'cart',
+          eventType: 'cart_clear',
+          success: true,
+          message: 'Carrito vaciado',
+        })
       },
     }),
     {

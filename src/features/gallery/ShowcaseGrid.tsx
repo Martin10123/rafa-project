@@ -1,12 +1,19 @@
 import { Link } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { isSupabaseConfigured } from '@/data/supabase/client'
 import { ShowcaseCard } from '@/features/gallery/ShowcaseCard'
+import { ShowcaseCarousel } from '@/features/gallery/ShowcaseCarousel'
 import {
   usePublishedShowcase,
   usePublishedShowcases,
 } from '@/features/gallery/useShowcases'
-import { CollageLayout } from '@/features/gallery/CollageLayout'
 
 export function ShowcaseGrid() {
   const { data, isLoading, isError, error } = usePublishedShowcases()
@@ -21,9 +28,12 @@ export function ShowcaseGrid() {
 
   if (isLoading) {
     return (
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
-          <li key={index} className="h-56 animate-pulse rounded-xl bg-muted" />
+          <li
+            key={index}
+            className="aspect-[4/5] animate-pulse rounded-xl bg-muted"
+          />
         ))}
       </ul>
     )
@@ -39,14 +49,19 @@ export function ShowcaseGrid() {
 
   if (!data?.length) {
     return (
-      <p className="text-sm text-muted-foreground text-pretty">
-        Todavía no hay trabajos publicados.
-      </p>
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="text-sm">Sin trabajos aún</CardTitle>
+          <CardDescription className="text-xs">
+            Cuando Rafa publique fotos, aparecerán aquí en carrusel.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     )
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {data.map((showcase) => (
         <li key={showcase.id}>
           <ShowcaseCard showcase={showcase} to={`/galeria/${showcase.id}`} />
@@ -65,59 +80,72 @@ export function ShowcaseDetailView({ showcaseId }: ShowcaseDetailProps) {
     usePublishedShowcase(showcaseId || null)
 
   if (isLoading) {
-    return <div className="aspect-square animate-pulse rounded-xl bg-muted" />
+    return <div className="aspect-[4/5] animate-pulse rounded-xl bg-muted" />
   }
 
   if (isError) {
     return (
       <p className="text-sm text-destructive text-pretty">
-        {error instanceof Error ? error.message : 'No se pudo cargar el collage.'}
+        {error instanceof Error ? error.message : 'No se pudo cargar el trabajo.'}
       </p>
     )
   }
 
   if (!showcase) {
     return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">Collage no encontrado.</p>
-        <Button variant="outline" size="sm" render={<Link to="/galeria" />}>
-          Volver a la galería
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Trabajo no encontrado</CardTitle>
+          <CardDescription className="text-xs">
+            Puede que ya no esté publicado.
+          </CardDescription>
+        </CardHeader>
+        <div className="px-4 pb-4">
+          <Button variant="outline" size="sm" render={<Link to="/galeria" />}>
+            <ArrowLeft data-icon="inline-start" />
+            Volver a la galería
+          </Button>
+        </div>
+      </Card>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <CollageLayout
-        template={showcase.template}
+    <div className="flex flex-col gap-5">
+      <ShowcaseCarousel
         images={showcase.images}
         title={showcase.title}
+        aspectClassName="aspect-[4/5] sm:aspect-[3/4]"
+        className="mx-auto w-full max-w-lg"
       />
-      <div className="flex flex-col gap-1">
-        <h1 className="text-base font-medium text-balance text-foreground">
-          {showcase.title}
-        </h1>
-        {showcase.caption ? (
-          <p className="text-sm text-pretty text-muted-foreground">
-            {showcase.caption}
-          </p>
-        ) : null}
-        {showcase.beadSize !== null ? (
-          <p className="text-xs text-muted-foreground">
-            Referencia:{' '}
-            <Link
-              to={`/producto/${showcase.beadSize}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Balín #{showcase.beadSize}
-            </Link>
-          </p>
-        ) : null}
-      </div>
-      <Button variant="outline" size="sm" render={<Link to="/galeria" />}>
-        Volver a la galería
-      </Button>
+
+      <Card>
+        <CardHeader className="gap-1">
+          <CardTitle className="text-base text-balance">{showcase.title}</CardTitle>
+          {showcase.caption ? (
+            <CardDescription className="text-sm text-pretty">
+              {showcase.caption}
+            </CardDescription>
+          ) : null}
+          {showcase.beadSize !== null ? (
+            <p className="text-xs text-muted-foreground">
+              Referencia:{' '}
+              <Link
+                to={`/producto/${showcase.beadSize}`}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Balín #{showcase.beadSize}
+              </Link>
+            </p>
+          ) : null}
+        </CardHeader>
+        <div className="px-4 pb-4">
+          <Button variant="outline" size="sm" render={<Link to="/galeria" />}>
+            <ArrowLeft data-icon="inline-start" />
+            Volver a la galería
+          </Button>
+        </div>
+      </Card>
     </div>
   )
 }

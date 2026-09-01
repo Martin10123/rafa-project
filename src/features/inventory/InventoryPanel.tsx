@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { movementTypeLabel } from '@/domain/inventory/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
+import { logEventSafe } from '@/shared/logging'
 import {
   useCreateInventoryMovement,
   useInventoryMovements,
@@ -57,11 +58,29 @@ export function InventoryPanel() {
         occurredAt: occurred.toISOString(),
         notes,
       })
+      logEventSafe({
+        category: 'inventory',
+        eventType: 'inventory_movement_created',
+        success: true,
+        message: type === 'in' ? 'Entrada registrada' : 'Ajuste registrado',
+        entityType: 'product',
+        entityId: productId,
+        detail: { type, quantity: qty },
+      })
       setQuantity('1')
       setNotes('')
       setMessage(type === 'in' ? 'Entrada registrada.' : 'Ajuste registrado.')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo guardar.')
+      const msg = error instanceof Error ? error.message : 'No se pudo guardar.'
+      logEventSafe({
+        category: 'inventory',
+        eventType: 'inventory_movement_error',
+        success: false,
+        message: msg,
+        entityType: 'product',
+        entityId: productId || undefined,
+      })
+      setMessage(msg)
     }
   }
 

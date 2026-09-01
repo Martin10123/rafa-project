@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EMAIL_CONFIRM_PENDING } from '@/domain/auth/messages'
 import { useAuth } from '@/features/auth/useAuth'
 
 type RegisterFormProps = {
@@ -15,13 +16,20 @@ export function RegisterForm({ onSuccess, onSwitch }: RegisterFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | undefined>()
+  const [info, setInfo] = useState<string | undefined>()
   const [pending, setPending] = useState(false)
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setPending(true)
+    setInfo(undefined)
     const message = await signUp(email, password, fullName)
     setPending(false)
+    if (message === EMAIL_CONFIRM_PENDING) {
+      setError(undefined)
+      setInfo(message)
+      return
+    }
     if (message) {
       setError(message)
       return
@@ -79,8 +87,11 @@ export function RegisterForm({ onSuccess, onSwitch }: RegisterFormProps) {
             required
           />
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {info ? (
+            <p className="text-xs text-muted-foreground text-pretty">{info}</p>
+          ) : null}
         </div>
-        <Button type="submit" disabled={pending || !configured}>
+        <Button type="submit" disabled={pending || !configured || Boolean(info)}>
           Registrarme
         </Button>
       </form>

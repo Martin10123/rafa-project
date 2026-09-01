@@ -8,6 +8,7 @@ import {
 } from '@/domain/order/types'
 import { formatPresentationPrice } from '@/domain/product/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
+import { logEventSafe } from '@/shared/logging'
 import {
   usePendingPaymentReviews,
   useReviewPaymentProof,
@@ -24,6 +25,14 @@ export function PaymentsPanel() {
     setMessage(undefined)
     try {
       await reviewProof.mutateAsync({ proofId, approve: true })
+      logEventSafe({
+        category: 'orders',
+        eventType: 'order_payment_approved',
+        success: true,
+        message: 'Pago aprobado',
+        entityType: 'payment_proof',
+        entityId: proofId,
+      })
       setMessage('Pago aprobado.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo aprobar.')
@@ -37,6 +46,14 @@ export function PaymentsPanel() {
         proofId,
         approve: false,
         rejectionReason: rejectReason,
+      })
+      logEventSafe({
+        category: 'orders',
+        eventType: 'order_payment_rejected',
+        success: true,
+        message: rejectReason || 'Pago rechazado',
+        entityType: 'payment_proof',
+        entityId: proofId,
       })
       setRejectingId(null)
       setRejectReason('')

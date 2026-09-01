@@ -1,7 +1,25 @@
 import { useState, useRef, type ChangeEvent, type FormEvent } from 'react'
+import { ImagePlus, Trash2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import {
   parseOptionalBeadSize,
   SHOWCASE_TEMPLATES,
@@ -11,7 +29,8 @@ import {
   type ShowcaseTemplate,
 } from '@/domain/showcase/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
-import { CollageLayout } from '@/features/gallery/CollageLayout'
+import { logEventSafe } from '@/shared/logging'
+import { ShowcaseCarousel } from '@/features/gallery/ShowcaseCarousel'
 import {
   useAdminShowcases,
   useCreateShowcase,
@@ -70,6 +89,14 @@ function ShowcaseEditor({ showcase }: { showcase: Showcase }) {
         },
       })
       setMessage('Guardado.')
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_showcase_updated',
+        success: true,
+        message: 'Trabajo de galería actualizado',
+        entityType: 'showcase',
+        entityId: showcase.id,
+      })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo guardar.')
     }
@@ -88,174 +115,232 @@ function ShowcaseEditor({ showcase }: { showcase: Showcase }) {
         sortOrder: showcase.images.length,
       })
       setMessage('Foto subida.')
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_image_uploaded',
+        success: true,
+        message: 'Imagen subida a la galería',
+        entityType: 'showcase',
+        entityId: showcase.id,
+      })
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo subir.')
+      const msg = error instanceof Error ? error.message : 'No se pudo subir.'
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_image_error',
+        success: false,
+        message: msg,
+        entityType: 'showcase',
+        entityId: showcase.id,
+      })
+      setMessage(msg)
     }
   }
 
   async function onDelete() {
-    if (!window.confirm('¿Eliminar este collage?')) return
+    if (!window.confirm('¿Eliminar este trabajo de la galería?')) return
     setMessage(undefined)
     try {
       await deleteShowcase.mutateAsync(showcase.id)
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_showcase_deleted',
+        success: true,
+        message: 'Trabajo de galería eliminado',
+        entityType: 'showcase',
+        entityId: showcase.id,
+      })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo eliminar.')
     }
   }
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border p-4">
-      <CollageLayout
-        template={showcase.template}
-        images={showcase.images}
-        title={showcase.title}
-      />
-
-      <form onSubmit={onSaveMeta} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="flex flex-col gap-1.5 md:col-span-2">
-          <Label htmlFor={`title-${showcase.id}`} className="text-xs">
-            Título
-          </Label>
-          <Input
-            id={`title-${showcase.id}`}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
+    <Card className="overflow-hidden">
+      <CardHeader className="gap-2 border-b">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-sm">{showcase.title}</CardTitle>
+            <CardDescription className="text-xs">
+              Vista previa del carrusel público
+            </CardDescription>
+          </div>
+          <Badge variant={published ? 'default' : 'outline'}>
+            {published ? 'Publicado' : 'Borrador'}
+          </Badge>
         </div>
+      </CardHeader>
 
-        <div className="flex flex-col gap-1.5 md:col-span-2">
-          <Label htmlFor={`caption-${showcase.id}`} className="text-xs">
-            Nota (opcional)
-          </Label>
-          <textarea
-            id={`caption-${showcase.id}`}
-            value={caption}
-            onChange={(event) => setCaption(event.target.value)}
-            rows={2}
-            className="min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm"
-          />
-        </div>
+      <CardContent className="flex flex-col gap-4 pt-4">
+        <ShowcaseCarousel
+          images={showcase.images}
+          title={showcase.title}
+          aspectClassName="aspect-[16/10]"
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`template-${showcase.id}`} className="text-xs">
-            Plantilla
-          </Label>
-          <select
-            id={`template-${showcase.id}`}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            value={template}
-            onChange={(event) => setTemplate(event.target.value as ShowcaseTemplate)}
-          >
-            {SHOWCASE_TEMPLATES.map((item) => (
-              <option key={item} value={item}>
-                {templateLabel(item)}
-              </option>
+        {showcase.images.length > 0 ? (
+          <ul className="flex gap-2 overflow-x-auto pb-1">
+            {showcase.images.map((image) => (
+              <li key={image.id} className="relative shrink-0">
+                <img
+                  src={image.imageUrl}
+                  alt={image.altText ?? showcase.title}
+                  className="size-16 rounded-lg object-cover ring-1 ring-border"
+                />
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="destructive"
+                  aria-label="Quitar foto"
+                  className="absolute -top-1.5 -right-1.5"
+                  disabled={deleteImage.isPending}
+                  onClick={() => void deleteImage.mutateAsync(image)}
+                >
+                  <Trash2 />
+                </Button>
+              </li>
             ))}
-          </select>
-        </div>
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Sube hasta {slots} foto{slots === 1 ? '' : 's'} para este trabajo.
+          </p>
+        )}
+      </CardContent>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`order-${showcase.id}`} className="text-xs">
-            Orden
-          </Label>
-          <Input
-            id={`order-${showcase.id}`}
-            inputMode="numeric"
-            className="tabular-nums"
-            value={sortOrder}
-            onChange={(event) => setSortOrder(event.target.value)}
-          />
-        </div>
+      <Separator />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`bead-${showcase.id}`} className="text-xs">
-            Balín referencia (opcional)
-          </Label>
-          <Input
-            id={`bead-${showcase.id}`}
-            inputMode="numeric"
-            placeholder="Ej. 5"
-            className="tabular-nums"
-            value={beadSize}
-            onChange={(event) => setBeadSize(event.target.value)}
-          />
-        </div>
+      <CardFooter className="flex-col items-stretch gap-4 pt-4">
+        <form onSubmit={onSaveMeta} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor={`title-${showcase.id}`} className="text-xs">
+              Título
+            </Label>
+            <Input
+              id={`title-${showcase.id}`}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              required
+            />
+          </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`published-${showcase.id}`} className="text-xs">
-            Estado
-          </Label>
-          <select
-            id={`published-${showcase.id}`}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            value={published ? 'published' : 'draft'}
-            onChange={(event) => setPublished(event.target.value === 'published')}
-          >
-            <option value="draft">Borrador</option>
-            <option value="published">Publicado</option>
-          </select>
-        </div>
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor={`caption-${showcase.id}`} className="text-xs">
+              Nota (opcional)
+            </Label>
+            <textarea
+              id={`caption-${showcase.id}`}
+              value={caption}
+              onChange={(event) => setCaption(event.target.value)}
+              rows={2}
+              className="min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm"
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2 md:col-span-2">
-          <Button type="submit" size="sm" disabled={updateShowcase.isPending}>
-            Guardar cambios
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="sr-only"
-            disabled={!canUpload || uploadImage.isPending}
-            onChange={(event) => void onUpload(event)}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!canUpload || uploadImage.isPending}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Subir foto ({showcase.images.length}/{slots})
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive"
-            disabled={deleteShowcase.isPending}
-            onClick={() => void onDelete()}
-          >
-            Eliminar collage
-          </Button>
-          {message ? (
-            <span className="text-xs text-muted-foreground">{message}</span>
-          ) : null}
-        </div>
-      </form>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`template-${showcase.id}`} className="text-xs">
+              Cantidad de fotos
+            </Label>
+            <Select
+              value={template}
+              onValueChange={(value) => setTemplate(value as ShowcaseTemplate)}
+            >
+              <SelectTrigger id={`template-${showcase.id}`} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SHOWCASE_TEMPLATES.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {templateLabel(item)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {showcase.images.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
-          {showcase.images.map((image) => (
-            <li key={image.id} className="flex flex-col gap-1">
-              <img
-                src={image.imageUrl}
-                alt={image.altText ?? showcase.title}
-                className="size-16 rounded-lg object-cover"
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={deleteImage.isPending}
-                onClick={() => void deleteImage.mutateAsync(image)}
-              >
-                Quitar
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </article>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`order-${showcase.id}`} className="text-xs">
+              Orden en galería
+            </Label>
+            <Input
+              id={`order-${showcase.id}`}
+              inputMode="numeric"
+              className="tabular-nums"
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`bead-${showcase.id}`} className="text-xs">
+              Balín referencia (opcional)
+            </Label>
+            <Input
+              id={`bead-${showcase.id}`}
+              inputMode="numeric"
+              placeholder="Ej. 5"
+              className="tabular-nums"
+              value={beadSize}
+              onChange={(event) => setBeadSize(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`published-${showcase.id}`} className="text-xs">
+              Estado
+            </Label>
+            <Select
+              value={published ? 'published' : 'draft'}
+              onValueChange={(value) => setPublished(value === 'published')}
+            >
+              <SelectTrigger id={`published-${showcase.id}`} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="published">Publicado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+            <Button type="submit" size="sm" disabled={updateShowcase.isPending}>
+              Guardar cambios
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              disabled={!canUpload || uploadImage.isPending}
+              onChange={(event) => void onUpload(event)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!canUpload || uploadImage.isPending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImagePlus data-icon="inline-start" />
+              Subir foto ({showcase.images.length}/{slots})
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={deleteShowcase.isPending}
+              onClick={() => void onDelete()}
+            >
+              Eliminar trabajo
+            </Button>
+            {message ? (
+              <span className="text-xs text-muted-foreground">{message}</span>
+            ) : null}
+          </div>
+        </form>
+      </CardFooter>
+    </Card>
   )
 }
 
@@ -270,57 +355,86 @@ function NewShowcaseForm() {
     setMessage(undefined)
 
     try {
-      await createShowcase.mutateAsync({ title, template })
+      const created = await createShowcase.mutateAsync({ title, template })
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_showcase_created',
+        success: true,
+        message: 'Trabajo de galería creado',
+        entityType: 'showcase',
+        entityId: created.id,
+      })
       setTitle('')
-      setMessage('Collage creado. Sube las fotos abajo.')
+      setMessage('Trabajo creado. Sube las fotos abajo.')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo crear.')
+      const msg = error instanceof Error ? error.message : 'No se pudo crear.'
+      logEventSafe({
+        category: 'gallery',
+        eventType: 'gallery_image_error',
+        success: false,
+        message: msg,
+        detail: { action: 'create_showcase' },
+      })
+      setMessage(msg)
     }
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="grid grid-cols-1 gap-3 rounded-xl border p-4 md:grid-cols-3"
-    >
-      <div className="flex flex-col gap-1.5 md:col-span-2">
-        <Label htmlFor="new-showcase-title" className="text-xs">
-          Nuevo collage
-        </Label>
-        <Input
-          id="new-showcase-title"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Ej. Manilla premium #5"
-          required
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="new-showcase-template" className="text-xs">
-          Plantilla
-        </Label>
-        <select
-          id="new-showcase-template"
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-          value={template}
-          onChange={(event) => setTemplate(event.target.value as ShowcaseTemplate)}
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Nuevo trabajo</CardTitle>
+        <CardDescription className="text-xs">
+          Elige cuántas fotos tendrá el carrusel y súbelas después de crear.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={onSubmit}
+          className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto]"
         >
-          {SHOWCASE_TEMPLATES.map((item) => (
-            <option key={item} value={item}>
-              {templateLabel(item)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex items-center gap-2 md:col-span-3">
-        <Button type="submit" size="sm" disabled={createShowcase.isPending}>
-          Crear collage
-        </Button>
-        {message ? (
-          <span className="text-xs text-muted-foreground">{message}</span>
-        ) : null}
-      </div>
-    </form>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="new-showcase-title" className="text-xs">
+              Título
+            </Label>
+            <Input
+              id="new-showcase-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Ej. Manilla premium #5"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="new-showcase-template" className="text-xs">
+              Fotos
+            </Label>
+            <Select
+              value={template}
+              onValueChange={(value) => setTemplate(value as ShowcaseTemplate)}
+            >
+              <SelectTrigger id="new-showcase-template" className="w-full md:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SHOWCASE_TEMPLATES.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {templateLabel(item)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end">
+            <Button type="submit" size="sm" disabled={createShowcase.isPending}>
+              Crear
+            </Button>
+          </div>
+          {message ? (
+            <p className="text-xs text-muted-foreground md:col-span-3">{message}</p>
+          ) : null}
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -340,15 +454,20 @@ export function GalleryPanel() {
       <NewShowcaseForm />
 
       {isLoading ? (
-        <div className="h-40 animate-pulse rounded-xl bg-muted" />
+        <div className="h-48 animate-pulse rounded-xl bg-muted" />
       ) : isError ? (
         <p className="text-sm text-destructive text-pretty">
           {error instanceof Error ? error.message : 'No se pudo cargar la galería.'}
         </p>
       ) : !data?.length ? (
-        <p className="text-sm text-muted-foreground">
-          Crea tu primer collage arriba.
-        </p>
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Sin trabajos</CardTitle>
+            <CardDescription className="text-xs">
+              Crea el primero con el formulario de arriba.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : (
         <div className="flex flex-col gap-6">
           {data.map((showcase) => (

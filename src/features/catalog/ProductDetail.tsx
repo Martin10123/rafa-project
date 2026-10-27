@@ -233,14 +233,16 @@ function DetailContent({ product }: { product: Product }) {
               </div>
             ) : null}
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                disabled={!canAdd}
-                onClick={onAddToCart}
-              >
-                Agregar al carrito
-              </Button>
+              {selectedPrice === null ? null : (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canAdd}
+                  onClick={onAddToCart}
+                >
+                  Agregar al carrito
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"

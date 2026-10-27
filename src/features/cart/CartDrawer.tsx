@@ -25,7 +25,7 @@ export function CartDrawer() {
         <DialogPrimitive.Popup
           data-slot="sheet-content"
           className={cn(
-            'fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-md flex-col border-l bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-lg outline-none',
+            'fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-white/10 bg-slate-950/80 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-2xl shadow-sky-950/40 backdrop-blur-xl outline-none',
             'data-open:animate-in data-open:slide-in-from-right data-open:duration-200',
             'data-closed:animate-out data-closed:slide-out-to-right data-closed:duration-200',
           )}

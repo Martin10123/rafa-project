@@ -6,9 +6,18 @@ export const ORDER_STATUSES = [
   'approved',
   'rejected',
   'cancelled',
+  'delivered',
 ] as const
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+export function isOrderStatus(value: string): value is OrderStatus {
+  return (ORDER_STATUSES as readonly string[]).includes(value)
+}
+
+export function orderReference(id: string): string {
+  return id.slice(0, 8)
+}
 
 export const PROOF_STATUSES = ['pending', 'approved', 'rejected'] as const
 
@@ -48,8 +57,46 @@ export type Order = {
   status: OrderStatus
   subtotalCents: number
   createdAt: string
+  adminNotes: string | null
   items: OrderItem[]
   latestProof: PaymentProof | null
+}
+
+export type CheckoutOrderItem = {
+  id: string
+  productName: string
+  presentationLabel: string
+  unit: string | null
+  priceCents: number
+  quantity: number
+  threadColor: string | null
+  lineTotalCents: number
+}
+
+export type CheckoutOrder = {
+  id: string
+  customerName: string
+  status: OrderStatus
+  subtotalCents: number
+  createdAt: string
+  rejectionReason: string | null
+  items: CheckoutOrderItem[]
+}
+
+export type StorePaymentInfo = {
+  bankName: string
+  accountType: string
+  accountNumber: string
+  holderName: string
+}
+
+export function paymentInfoIsPublished(
+  info: StorePaymentInfo | null | undefined,
+): boolean {
+  if (!info) return false
+  return [info.bankName, info.accountType, info.accountNumber, info.holderName].some(
+    (value) => value.trim() !== '',
+  )
 }
 
 export type CreateOrderInput = {
@@ -82,6 +129,8 @@ export function orderStatusLabel(status: OrderStatus): string {
       return 'Rechazado'
     case 'cancelled':
       return 'Cancelado'
+    case 'delivered':
+      return 'Entregado'
   }
 }
 

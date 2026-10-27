@@ -18,7 +18,7 @@ export function CartNavButton() {
     >
       <ShoppingBag className="size-4" aria-hidden />
       {count > 0 ? (
-        <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground tabular-nums">
+        <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-yellow-300 text-[10px] font-semibold text-slate-950 tabular-nums">
           {count > 9 ? '9+' : count}
         </span>
       ) : null}

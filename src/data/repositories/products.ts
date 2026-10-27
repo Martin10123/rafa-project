@@ -117,22 +117,73 @@ export async function listAdminProducts(): Promise<Product[]> {
   return withStock(data as ProductRow[])
 }
 
-export async function updateProductPrice(
-  productId: string,
-  priceCents: number | null,
-): Promise<Product> {
+const PRODUCT_IMAGE_BUCKET = 'product-images'
+
+export type UpdateProductInput = {
+  productId: string
+  name: string
+  description: string | null
+  approxMm: number | null
+  priceCents: number | null
+  isActive: boolean
+  coverImageUrl: string | null
+  presentations: ProductPresentation[]
+}
+
+export async function updateProduct(input: UpdateProductInput): Promise<Product> {
   if (!supabase) {
     throw new Error('Falta configurar Supabase (.env.local).')
   }
 
   const { data, error } = await supabase
     .from('products')
-    .update({ price_cents: priceCents })
-    .eq('id', productId)
+    .update({
+      name: input.name,
+      description: input.description,
+      approx_mm: input.approxMm,
+      price_cents: input.priceCents,
+      is_active: input.isActive,
+      cover_image_url: input.coverImageUrl,
+      presentations: input.presentations.map((item) => ({
+        label: item.label,
+        price_cents: item.priceCents,
+        unit: item.unit,
+        image_url: item.imageUrl,
+      })),
+    })
+    .eq('id', input.productId)
     .select(PRODUCT_COLUMNS)
     .single()
 
   if (error) throw new Error(error.message)
   const [product] = await withStock([data as ProductRow])
   return product
+}
+
+export async function uploadProductImage(
+  productId: string,
+  file: File,
+): Promise<string> {
+  if (!supabase) {
+    throw new Error('Falta configurar Supabase (.env.local).')
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const storagePath = `${productId}/${crypto.randomUUID()}.${ext}`
+
+  const { error } = await supabase.storage
+    .from(PRODUCT_IMAGE_BUCKET)
+    .upload(storagePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || undefined,
+    })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage
+    .from(PRODUCT_IMAGE_BUCKET)
+    .getPublicUrl(storagePath)
+
+  return data.publicUrl
 }

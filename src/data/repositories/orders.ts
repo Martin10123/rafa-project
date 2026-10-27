@@ -1,4 +1,6 @@
 import type {
+  CheckoutOrder,
+  CheckoutOrderItem,
   CreateOrderInput,
   Order,
   OrderItem,
@@ -6,6 +8,7 @@ import type {
   PaymentProof,
   ProofStatus,
 } from '@/domain/order/types'
+import { isOrderStatus } from '@/domain/order/types'
 import { supabase } from '@/data/supabase/client'
 
 const PROOF_BUCKET = 'payment-proofs'
@@ -18,6 +21,7 @@ type OrderRow = {
   customer_email: string | null
   status: string
   subtotal_cents: number
+  admin_notes: string | null
   created_at: string
   order_items: ItemRow[] | null
   payment_proofs: ProofRow[] | null
@@ -55,6 +59,7 @@ const ORDER_SELECT = `
   customer_email,
   status,
   subtotal_cents,
+  admin_notes,
   created_at,
   order_items (
     id,
@@ -85,16 +90,6 @@ function assertClient() {
     throw new Error('Falta configurar Supabase (.env.local).')
   }
   return supabase
-}
-
-function isOrderStatus(value: string): value is OrderStatus {
-  return (
-    value === 'awaiting_proof' ||
-    value === 'review' ||
-    value === 'approved' ||
-    value === 'rejected' ||
-    value === 'cancelled'
-  )
 }
 
 function isProofStatus(value: string): value is ProofStatus {
@@ -167,6 +162,7 @@ function mapOrder(row: OrderRow, proofUrls: Map<string, string | null>): Order {
     status: row.status,
     subtotalCents: row.subtotal_cents,
     createdAt: row.created_at,
+    adminNotes: row.admin_notes,
     items: (row.order_items ?? []).map(mapItem),
     latestProof,
   }
@@ -280,5 +276,128 @@ export async function reviewPaymentProof(
     p_rejection_reason: rejectionReason ?? null,
   })
 
+  if (error) throw new Error(error.message)
+}
+
+type CheckoutOrderRow = {
+  id: string
+  status: string
+  subtotal_cents: number
+  created_at: string
+  customer_name: string
+  rejection_reason: string | null
+  items: Array<{
+    id: string
+    product_name: string
+    presentation_label: string
+    unit: string | null
+    price_cents: number
+    quantity: number
+    thread_color: string | null
+    line_total_cents: number
+  }> | null
+}
+
+function mapCheckoutItem(
+  row: NonNullable<CheckoutOrderRow['items']>[number],
+): CheckoutOrderItem {
+  return {
+    id: row.id,
+    productName: row.product_name,
+    presentationLabel: row.presentation_label,
+    unit: row.unit,
+    priceCents: row.price_cents,
+    quantity: row.quantity,
+    threadColor: row.thread_color,
+    lineTotalCents: row.line_total_cents,
+  }
+}
+
+export async function getCheckoutOrder(orderId: string): Promise<CheckoutOrder> {
+  const client = assertClient()
+
+  const { data, error } = await client.rpc('get_order_checkout', {
+    p_order_id: orderId,
+  })
+
+  if (error) throw new Error(error.message)
+
+  const payload = typeof data === 'string' ? JSON.parse(data) : data
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Pedido no encontrado')
+  }
+
+  const row = payload as CheckoutOrderRow
+  if (!isOrderStatus(row.status)) {
+    throw new Error(`Estado de pedido inválido: ${row.status}`)
+  }
+
+  return {
+    id: row.id,
+    customerName: row.customer_name,
+    status: row.status,
+    subtotalCents: row.subtotal_cents,
+    createdAt: row.created_at,
+    rejectionReason: row.rejection_reason,
+    items: (row.items ?? []).map(mapCheckoutItem),
+  }
+}
+
+export async function listMyOrders(): Promise<Order[]> {
+  const client = assertClient()
+  const { data: authData, error: authError } = await client.auth.getUser()
+  if (authError) throw new Error(authError.message)
+  if (!authData.user) throw new Error('Inicia sesión para ver tus pedidos.')
+
+  const { data, error } = await client
+    .from('orders')
+    .select(ORDER_SELECT)
+    .eq('user_id', authData.user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return mapOrdersWithProofUrls(data as OrderRow[])
+}
+
+export async function listAdminOrders(status?: OrderStatus): Promise<Order[]> {
+  const client = assertClient()
+
+  let query = client
+    .from('orders')
+    .select(ORDER_SELECT)
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return mapOrdersWithProofUrls(data as OrderRow[])
+}
+
+export async function cancelStoreOrder(orderId: string): Promise<void> {
+  const client = assertClient()
+  const { error } = await client.rpc('cancel_store_order', {
+    p_order_id: orderId,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function markOrderDelivered(orderId: string): Promise<void> {
+  const client = assertClient()
+  const { error } = await client.rpc('mark_order_delivered', {
+    p_order_id: orderId,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function setOrderAdminNotes(
+  orderId: string,
+  notes: string,
+): Promise<void> {
+  const client = assertClient()
+  const { error } = await client.rpc('set_order_admin_notes', {
+    p_order_id: orderId,
+    p_notes: notes,
+  })
   if (error) throw new Error(error.message)
 }

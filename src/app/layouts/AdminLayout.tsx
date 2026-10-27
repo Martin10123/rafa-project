@@ -33,6 +33,13 @@ export function AdminLayout() {
             <Button
               variant="ghost"
               size="sm"
+              render={<Link to="/admin/pedidos" />}
+            >
+              Pedidos
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               render={<Link to="/admin/pagos" />}
             >
               Pagos

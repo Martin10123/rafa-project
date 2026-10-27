@@ -1,3 +1,4 @@
+import { PaymentInfoForm } from '@/features/admin/PaymentInfoForm'
 import { PaymentsPanel } from '@/features/admin/PaymentsPanel'
 
 export function AdminPaymentsPage() {
@@ -12,6 +13,7 @@ export function AdminPaymentsPage() {
           Revisa los pantallazos de transferencia y aprueba o rechaza cada pedido.
         </p>
       </div>
+      <PaymentInfoForm />
       <PaymentsPanel />
     </section>
   )

@@ -2,7 +2,7 @@ import { BeadViewerSuspense } from '@/features/scene3d/BeadViewerLazy'
 
 export function CatalogHero3D() {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_30px_80px_-40px] shadow-sky-400/50 backdrop-blur-xl">
       <div className="h-56 sm:h-72">
         <BeadViewerSuspense
           beadSize={5}

@@ -3,7 +3,9 @@ import {
   getProductByBeadSize,
   listAdminProducts,
   listCatalogProducts,
-  updateProductPrice,
+  updateProduct,
+  uploadProductImage,
+  type UpdateProductInput,
 } from '@/data/repositories/products'
 import type { BeadSize } from '@/domain/product/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
@@ -39,19 +41,20 @@ export function useAdminProducts() {
   })
 }
 
-export function useUpdateProductPrice() {
+export function useUpdateProduct() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({
-      productId,
-      priceCents,
-    }: {
-      productId: string
-      priceCents: number | null
-    }) => updateProductPrice(productId, priceCents),
+    mutationFn: (input: UpdateProductInput) => updateProduct(input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all })
     },
+  })
+}
+
+export function useUploadProductImage() {
+  return useMutation({
+    mutationFn: ({ productId, file }: { productId: string; file: File }) =>
+      uploadProductImage(productId, file),
   })
 }

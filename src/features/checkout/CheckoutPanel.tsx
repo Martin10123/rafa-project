@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,10 +6,14 @@ import { Label } from '@/components/ui/label'
 import { formatCop, formatPresentationPrice } from '@/domain/product/types'
 import { lineTotalCents, threadColorLabel } from '@/domain/cart/types'
 import type { CartLine } from '@/domain/cart/types'
+import { orderReference } from '@/domain/order/types'
 import { isSupabaseConfigured } from '@/data/supabase/client'
 import { logEventSafe } from '@/shared/logging'
+import { PaymentInstructions } from '@/features/checkout/PaymentInstructions'
+import { ProofUpload } from '@/features/checkout/ProofUpload'
 import { useCartActions, useCartLines, useCartSubtotalLabel } from '@/features/cart/useCart'
-import { useCreateOrder, useSubmitPaymentProof } from '@/features/orders/useOrders'
+import { readPendingOrderId, savePendingOrderId } from '@/features/orders/pending-order'
+import { useCreateOrder } from '@/features/orders/useOrders'
 
 type Step = 'contact' | 'proof' | 'done'
 
@@ -32,8 +36,7 @@ export function CheckoutPanel() {
   const subtotalLabel = useCartSubtotalLabel()
   const { clearCart } = useCartActions()
   const createOrder = useCreateOrder()
-  const submitProof = useSubmitPaymentProof()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingOrderId = readPendingOrderId()
 
   const [step, setStep] = useState<Step>('contact')
   const [orderId, setOrderId] = useState<string | null>(null)
@@ -68,6 +71,7 @@ export function CheckoutPanel() {
         entityId: id,
         detail: { phone, itemCount: lines.length },
       })
+      savePendingOrderId(id)
       setOrderId(id)
       setStep('proof')
     } catch (error) {
@@ -83,37 +87,6 @@ export function CheckoutPanel() {
     }
   }
 
-  async function onUploadProof(file: File) {
-    if (!orderId) return
-    setMessage(undefined)
-
-    try {
-      await submitProof.mutateAsync({ orderId, file })
-      logEventSafe({
-        category: 'checkout',
-        eventType: 'checkout_proof_submitted',
-        success: true,
-        message: 'Comprobante enviado',
-        entityType: 'order',
-        entityId: orderId,
-      })
-      clearCart()
-      setStep('done')
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : 'No se pudo subir el comprobante.'
-      logEventSafe({
-        category: 'checkout',
-        eventType: 'checkout_proof_error',
-        success: false,
-        message: msg,
-        entityType: 'order',
-        entityId: orderId,
-      })
-      setMessage(msg)
-    }
-  }
-
   if (!isSupabaseConfigured()) {
     return (
       <p className="text-sm text-muted-foreground text-pretty">
@@ -122,10 +95,19 @@ export function CheckoutPanel() {
     )
   }
 
-  if (lines.length === 0 && step !== 'done') {
+  if (lines.length === 0 && step !== 'done' && step !== 'proof') {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">Tu carrito está vacío.</p>
+        {pendingOrderId ? (
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link to={`/pedido/${pendingOrderId}`} />}
+          >
+            Retomar comprobante
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" render={<Link to="/" />}>
           Ver catálogo
         </Button>
@@ -133,7 +115,7 @@ export function CheckoutPanel() {
     )
   }
 
-  if (step === 'done') {
+  if (step === 'done' && orderId) {
     return (
       <div className="flex flex-col gap-4 rounded-xl border p-4">
         <p className="text-base font-medium text-foreground">
@@ -143,14 +125,18 @@ export function CheckoutPanel() {
           Rafa revisará tu pago pronto. Si algo no coincide, te contactará al
           teléfono que dejaste.
         </p>
-        {orderId ? (
-          <p className="text-xs text-muted-foreground">
-            Referencia: <span className="font-mono">{orderId.slice(0, 8)}</span>
-          </p>
-        ) : null}
-        <Button size="sm" render={<Link to="/" />}>
-          Volver al catálogo
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          Referencia:{' '}
+          <span className="font-mono">{orderReference(orderId)}</span>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" render={<Link to={`/pedido/${orderId}`} />}>
+            Ver pedido
+          </Button>
+          <Button variant="outline" size="sm" render={<Link to="/" />}>
+            Volver al catálogo
+          </Button>
+        </div>
       </div>
     )
   }
@@ -185,6 +171,16 @@ export function CheckoutPanel() {
         {step === 'contact' ? (
           <form onSubmit={onCreateOrder} className="flex flex-col gap-3 rounded-xl border p-4">
             <h2 className="text-sm font-medium text-foreground">Datos de contacto</h2>
+            {pendingOrderId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link to={`/pedido/${pendingOrderId}`} />}
+              >
+                Retomar comprobante pendiente
+              </Button>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="checkout-name" className="text-xs">
                 Nombre
@@ -226,48 +222,36 @@ export function CheckoutPanel() {
               <p className="text-xs text-destructive text-pretty">{message}</p>
             ) : null}
           </form>
-        ) : (
+        ) : orderId ? (
           <div className="flex flex-col gap-3 rounded-xl border p-4">
             <h2 className="text-sm font-medium text-foreground">
               Sube el comprobante
             </h2>
+            <PaymentInstructions />
             <p className="text-xs text-muted-foreground text-pretty">
-              Captura de pantalla o foto de la transferencia. Rafa la revisará y
-              confirmará tu pedido.
+              Escribe la referencia{' '}
+              <span className="font-mono text-foreground">
+                {orderReference(orderId)}
+              </span>{' '}
+              en la transferencia. Rafa confirmará tu pedido.
             </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-              className="sr-only"
-              disabled={submitProof.isPending}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                event.target.value = ''
-                if (file) void onUploadProof(file)
+            <ProofUpload
+              orderId={orderId}
+              onUploaded={() => {
+                clearCart()
+                setStep('done')
               }}
             />
             <Button
               type="button"
               size="sm"
-              disabled={submitProof.isPending}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {submitProof.isPending ? 'Subiendo…' : 'Elegir imagen'}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
               variant="ghost"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(`/pedido/${orderId}`)}
             >
               Subir después
             </Button>
-            {message ? (
-              <p className="text-xs text-destructive text-pretty">{message}</p>
-            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

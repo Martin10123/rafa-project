@@ -7,8 +7,8 @@ export function AdminHomePage() {
         <p className="text-xs font-medium text-muted-foreground uppercase">Panel</p>
         <h1 className="text-base font-medium text-foreground">Productos</h1>
         <p className="max-w-xl text-sm text-muted-foreground text-pretty">
-          Define o actualiza el precio de cada tamaño. #7 y #8 pueden quedar
-          vacíos hasta que tengas el valor.
+          Edita nombre, precio, presentaciones y fotos. #7 y #8 pueden quedar
+          sin precio hasta que tengas el valor.
         </p>
       </div>
       <AdminProductsPanel />

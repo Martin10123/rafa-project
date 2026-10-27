@@ -143,7 +143,7 @@ export function CartPanel({ onClose }: { onClose?: () => void } = {}) {
       <div className="flex flex-col gap-3 rounded-xl border p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">Subtotal</p>
-          <p className="text-base font-medium tabular-nums text-foreground">
+          <p className="text-xl font-semibold tabular-nums text-yellow-200">
             {subtotalLabel}
           </p>
         </div>
